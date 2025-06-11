@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .container {
+        display: flex;
+        height: 80vh;
+    }
+
+    .left-panel, .right-panel {
+        width: 50%;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    .left-panel {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #1c1c1c;
+    }
+
+    .right-panel {
+        background-color: #2a2a2a;
+        color: white;
+        text-align: center;
+    }
+
+    video {
+        border: 2px solid white;
+        width: 100%;
+        max-width: 480px;
+    }
+
+    button {
+        margin: 5px;
+        padding: 10px;
+        font-size: 18px;
+        background-color: #E9E4F0;
+        border: none;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background-color: #393f4d;
+        color: white;
+    }
+
+    #predictedText {
+        width: 80%;
+        padding: 10px;
+        font-size: 18px;
+        text-align: center;
+        margin-top: 10px;
+    }
+</style>
+
+<div class="container">
+    <!-- Left Side: Webcam -->
+    <div class="left-panel">
+        <video id="video" autoplay></video>
+    </div>
+
+    <!-- Right Side: Detection Results -->
+    <div class="right-panel">
+        <h1>Sign Language Detection</h1>
+        <button id="startButton">Start Webcam</button>
+        <p id="detectedSign">Detected Sign: None</p>
+        <input type="text" id="predictedText" readonly>
+        <br>
+        <button id="backspaceButton">Backspace</button>
+        <button id="spaceButton">Space</button>
+        <button id="nextButton">Next</button>
+    </div>
+</div>
+
+<script>
+    let video = document.getElementById('video');
+    let detectedSignText = document.getElementById('detectedSign');
+    let predictedText = document.getElementById('predictedText');
+    let detectionRunning = false;
+
+    async function startWebcam() {
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    video.play();
+                    detectSigns();
+                };
+            })
+            .catch(err => console.log("Error accessing webcam: " + err));
+    }
+
+    async function detectSigns() {
+        if (detectionRunning) return;
+        detectionRunning = true;
+
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        async function detectFrame() {
+            if (!detectionRunning) return;
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                detectionRunning = false;
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                canvas.toBlob(blob => {
+                    if (blob) {
+                        const formData = new FormData();
+                        formData.append('image', blob, 'frame.jpg');
+
+                        fetch('/detect', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.detections && data.detections.length > 0) {
+                                const bestDetection = data.detections[0];
+                                detectedSignText.innerText = `Detected Sign: ${bestDetection.class}`;
+                                predictedText.value += bestDetection.class;
+                            } else {
+                                detectedSignText.innerText = 'Detected Sign: ----';
+                            }
+                        })
+                        .catch(error => console.error('Detection error:', error));
+                    }
+                }, 'image/jpeg');
+            }
+            requestAnimationFrame(detectFrame);
+        }
+        detectFrame();
+    }
+
+    document.getElementById("startButton").addEventListener("click", startWebcam);
+    document.getElementById("backspaceButton").addEventListener("click", () => {
+        predictedText.value = predictedText.value.slice(0, -1);
+    });
+    document.getElementById("spaceButton").addEventListener("click", () => {
+        predictedText.value += ' ';
+    });
+    document.getElementById("nextButton").addEventListener("click", () => {
+        detectedSignText.innerText = "Detected Sign: None";
+        detectSigns();
+    });
+</script>
+{% endblock %}
