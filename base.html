@@ -1,4 +1,4 @@
-
+<!-- {% load static %} -->
 
 <!DOCTYPE html>
 <html>
@@ -242,20 +242,19 @@
 </div>
 <br>
 <body>
-  <ul id="nav">
-    <li class="li"><a class="active" href="http://127.0.0.1:5000/">Home</a></li>
-    <li class="li"><a href="http://127.0.0.1:8000/">Speech Convertor</a></li>
-    <li class="li"><a href="http://127.0.0.1:5000/">Sign Convertor</a></li>
-
-    {% if user_logged_in %}
-        <li class="li"><a href="http://127.0.0.1:8000/logout/">Log-Out</a></li>
-    {% else %}
-        <li class="li"><a href="http://127.0.0.1:8000/signup/">Sign Up</a></li>
-        <li class="li"><a href="http://127.0.0.1:8000/login/">Log-in</a></li>
-    {% endif %}
+<ul id="nav">
+  <li class="li"><a class="active" href="{% url 'home' %}">Home</a></li>
+  <li class="li"><a href="{% url 'animation' %}">Speech Convertor</a></li>
+  {% if not user.is_authenticated %}
+  <li class="li"><a href="{% url 'signup' %}">Sign Up</a></li>
+  {% endif %}
+  {% if user.is_authenticated %}
+  <li class="li"><a href="http://127.0.0.1:5000/">Sign Convertor</a></li>
+  <li class="li"><a href="{% url 'logout' %}">Log-Out</a></li>
+  {% else %}
+    <li class="li"><a href="{% url 'login' %}">Log-in</a></li>
+  {% endif %}
 </ul>
-
-  
 
 <div class="wrapper" >
   {% block content %}
